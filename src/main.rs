@@ -1,14 +1,16 @@
+use camara::Camera;
 use gl;
 use glutin::{
     dpi::LogicalSize,
-    event::{ElementState, Event, VirtualKeyCode, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder,
 };
-use math::math4::Math4;
+use math::{math4::Math4, vec3::Vec3};
 
 pub mod math;
+pub mod camara;
 
 use std::{ffi::CString, ptr, str, time::Instant};
 
@@ -229,19 +231,43 @@ fn main() {
     // Variables para animación
     let start_time = Instant::now();
 
+    // Crea tu cámara
+    let mut camera = Camera::new(Vec3::new(0.0, 0.0, 3.0));
+
+    // Para medir delta_time
+    let mut last_frame_time = std::time::Instant::now();
+
     // Event loop
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
         match event {
+            // Capturar eventos de teclado/ratón
+            Event::DeviceEvent { event, .. } => {
+                match event {
+                    DeviceEvent::MouseMotion { delta: (dx, dy) } => {
+                        camera.process_mouse(dx as f32, dy as f32);
+                    }
+                    _ => {}
+                }
+            }
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
                     *control_flow = ControlFlow::Exit;
                 }
                 WindowEvent::KeyboardInput { input, .. } => {
-                    if let Some(VirtualKeyCode::Escape) = input.virtual_keycode {
+                    if let Some(key) = input.virtual_keycode {
                         if input.state == ElementState::Pressed {
-                            *control_flow = ControlFlow::Exit;
+                            // ESC para salir
+                            if key == VirtualKeyCode::Escape {
+                                *control_flow = ControlFlow::Exit;
+                            } else {
+                                // Mover la cámara con W, S, A, D
+                                let now = std::time::Instant::now();
+                                let delta_time = (now - last_frame_time).as_secs_f32();
+                                last_frame_time = now;
+                                camera.process_keyboard(key, delta_time);
+                            }
                         }
                     }
                 }
@@ -254,6 +280,11 @@ fn main() {
                 _ => {}
             },
             Event::RedrawRequested(_) => {
+                // Calcular delta_time cada frame (otra forma)
+                let now = std::time::Instant::now();
+                let delta_time = (now - last_frame_time).as_secs_f32();
+                last_frame_time = now;
+
                 unsafe {
                     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
                 }
@@ -266,8 +297,8 @@ fn main() {
                 let rot_x = Math4::rotate_x(elapsed * 0.7);
                 let model = Math4::multiply(&rot_y, &rot_x);
 
-                // 2) 'view' con la cámara un poco alejada
-                let view = Math4::translate(0.0, 0.0, -3.0);
+                // 2) Usar camera.get_view_matrix()
+                let view = camera.get_view_matrix();
 
                 // 3) Proyección en perspectiva
                 let size = windowed_context.window().inner_size();

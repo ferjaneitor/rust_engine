@@ -30,11 +30,13 @@ impl Camera {
         let sin_yaw = self.yaw.sin();
 
         // Dirección "forward" en 3D
+        // alternativo, mira en -Z
         let forward = Vec3::new(
-            sin_yaw * cos_pitch,
-            -sin_pitch,
-            cos_yaw * cos_pitch,
+            - (sin_yaw * cos_pitch),
+            - sin_pitch,
+            - (cos_yaw * cos_pitch),
         );
+
         // Dirección "right", perpendicular en el plano XZ
         let right = Vec3::new(cos_yaw, 0.0, -sin_yaw);
         // Arriba se obtiene con cross, pero en este caso,
@@ -61,10 +63,10 @@ impl Camera {
         let right   = Vec3::new(cos_yaw, 0.0, -sin_yaw);
 
         match key {
-            VirtualKeyCode::W => {
+            VirtualKeyCode::S => {
                 self.position = self.position + forward * velocity;
             }
-            VirtualKeyCode::S => {
+            VirtualKeyCode::W => {
                 self.position = self.position - forward * velocity;
             }
             VirtualKeyCode::A => {
