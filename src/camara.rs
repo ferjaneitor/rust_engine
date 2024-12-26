@@ -1,6 +1,6 @@
 use glutin::event::VirtualKeyCode;
 
-use crate::math::{math4::Math4, vec3::Vec3};
+use crate::math::{matrix_4_by_4::Matrix4, vec3::Vec3};
 
 pub struct Camera {
     pub position: Vec3,
@@ -20,7 +20,7 @@ impl Camera {
     }
 
     /// Retorna la matriz de vista, calculada a partir de position, yaw y pitch
-    pub fn get_view_matrix(&self) -> Math4 {
+    pub fn get_view_matrix(&self) -> Matrix4 {
         // 1. Calcular la dirección "forward" según yaw/pitch
         //    yaw   = rotación en Y
         //    pitch = rotación en X
@@ -46,7 +46,7 @@ impl Camera {
         let target = self.position + forward;
 
         // 3. Generar la view con `look_at`
-        Math4::look_at(self.position, target, Vec3::UNIT_Y)
+        Matrix4::look_at(self.position, target, Vec3::UNIT_Y)
     }
 
     /// Actualizar la posición de la cámara según la tecla presionada
