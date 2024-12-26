@@ -37,8 +37,6 @@ impl Camera {
             - (cos_yaw * cos_pitch),
         );
 
-        // Dirección "right", perpendicular en el plano XZ
-        let right = Vec3::new(cos_yaw, 0.0, -sin_yaw);
         // Arriba se obtiene con cross, pero en este caso,
         // definimos un "world up" = (0,1,0) y ajustamos con pitch si lo deseas
 

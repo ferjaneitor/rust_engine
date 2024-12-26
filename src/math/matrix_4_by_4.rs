@@ -1,6 +1,6 @@
 use crate::math::vec3::Vec3;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Matrix4 {
     pub m: [f32; 16], // almacenamos en columna mayor (OpenGL style)
 }
