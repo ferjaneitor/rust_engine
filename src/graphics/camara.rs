@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use glutin::event::VirtualKeyCode;
 
 use crate::math::{matrix_4_by_4::Matrix4, vec3::Vec3};
@@ -7,6 +9,7 @@ pub struct Camera {
     pub yaw: f32,   // rotación alrededor de Y
     pub pitch: f32, // rotación alrededor de X
     pub speed: f32, // velocidad de movimiento
+    pub vertical_speed: f32, // Nueva velocidad para movimiento vertical
 }
 
 impl Camera {
@@ -15,13 +18,19 @@ impl Camera {
             position,
             yaw: 0.0,
             pitch: 0.0,
-            speed: 2.0, // unidades por segundo (por ejemplo)
+            speed: 10.0,          // Velocidad de movimiento horizontal (Unidades por segundo)
+            vertical_speed: 10.0, // Velocidad de movimiento vertical (Unidades por segundo)
         }
     }
 
     /// Retorna la matriz de vista, calculada a partir de position, yaw y pitch
     pub fn get_view_matrix(&self) -> Matrix4 {
-        // 1. Calcular la dirección "forward" según yaw/pitch
+        Matrix4::look_at(self.position, self.position + self.get_forward_vector(), Vec3::UNIT_Y)
+    }
+
+    /// Retorna el vector forward basado en yaw y pitch
+    fn get_forward_vector(&self) -> Vec3 {
+        // . Calcular la dirección "forward" según yaw/pitch
         //    yaw   = rotación en Y
         //    pitch = rotación en X
         let cos_pitch = self.pitch.cos();
@@ -36,46 +45,42 @@ impl Camera {
             - sin_pitch,
             - (cos_yaw * cos_pitch),
         );
-
-        // Arriba se obtiene con cross, pero en este caso,
-        // definimos un "world up" = (0,1,0) y ajustamos con pitch si lo deseas
-
-        // 2. "Target" = position + forward
-        let target = self.position + forward;
-
-        // 3. Generar la view con `look_at`
-        Matrix4::look_at(self.position, target, Vec3::UNIT_Y)
+        
+        return  forward;
     }
 
-    /// Actualizar la posición de la cámara según la tecla presionada
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, delta_time: f32) {
-        let velocity = self.speed * delta_time;
+     /// Procesa múltiples teclas presionadas para mover la cámara
+     pub fn process_keys(&mut self, pressed: &HashSet<VirtualKeyCode>, dt: f32) {
+        let velocity = self.speed * dt;
+        let vertical_velocity = self.vertical_speed * dt;
 
-        // Calcular la dirección "forward" y "right" para movernos
-        let cos_pitch = self.pitch.cos();
-        let sin_pitch = self.pitch.sin();
-        let cos_yaw = self.yaw.cos();
-        let sin_yaw = self.yaw.sin();
+        let forward = self.get_forward_vector();
+        let right = forward.cross(&Vec3::UNIT_Y).normalize();
+        let up = Vec3::UNIT_Y;
 
-        let forward = Vec3::new(sin_yaw * cos_pitch, -sin_pitch, cos_yaw * cos_pitch);
-        let right   = Vec3::new(cos_yaw, 0.0, -sin_yaw);
+        // Movimiento horizontal
+        if pressed.contains(&VirtualKeyCode::W) {
+            self.position += forward * velocity;
+        }
+        if pressed.contains(&VirtualKeyCode::S) {
+            self.position -= forward * velocity;
+        }
+        if pressed.contains(&VirtualKeyCode::A) {
+            self.position -= right * velocity;
+        }
+        if pressed.contains(&VirtualKeyCode::D) {
+            self.position += right * velocity;
+        }
 
-        match key {
-            VirtualKeyCode::S => {
-                self.position = self.position + forward * velocity;
-            }
-            VirtualKeyCode::W => {
-                self.position = self.position - forward * velocity;
-            }
-            VirtualKeyCode::A => {
-                self.position = self.position - right * velocity;
-            }
-            VirtualKeyCode::D => {
-                self.position = self.position + right * velocity;
-            }
-            _ => {}
+        // Movimiento vertical
+        if pressed.contains(&VirtualKeyCode::Space) {
+            self.position += up * vertical_velocity;
+        }
+        if pressed.contains(&VirtualKeyCode::LShift) || pressed.contains(&VirtualKeyCode::RShift) {
+            self.position -= up * vertical_velocity;
         }
     }
+    
 
     /// Actualizar la orientación (yaw/pitch) con el mouse
     pub fn process_mouse(&mut self, delta_x: f32, delta_y: f32) {

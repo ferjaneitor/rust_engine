@@ -10,8 +10,9 @@ use graphics::camara::Camera;
 
 use math::{matrix_4_by_4::Matrix4, vec3::Vec3};
 
-use glutin::event::{Event, MouseButton, ElementState, WindowEvent, DeviceEvent, VirtualKeyCode};
+use glutin::event::{DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
+use std::collections::HashSet;
 use std::time::Instant;
 
 fn main() {
@@ -55,12 +56,15 @@ fn main() {
     // Para delta_time
     let mut last_frame_time = Instant::now();
 
+    //Guarda la letra precioada 
+    let mut pressed_keys: HashSet<VirtualKeyCode> = HashSet::new();
+
     // 7) Event loop
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
         match event {
-            // input de mouse
+            // input de mouse a nivel de Device
             Event::DeviceEvent { event, .. } => {
                 match event {
                     DeviceEvent::MouseMotion { delta: (dx, dy) } => {
@@ -71,7 +75,7 @@ fn main() {
                     _ => {}
                 }
             }
-            // input de ventana
+            // input de ventana (KeyboardInput, MouseInput, etc.)
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
                     *control_flow = ControlFlow::Exit;
@@ -82,19 +86,24 @@ fn main() {
                     }
                 }
                 WindowEvent::KeyboardInput { input, .. } => {
-                    if let Some(key) = input.virtual_keycode {
-                        if input.state == ElementState::Pressed {
-                            if key == VirtualKeyCode::Escape {
-                                *control_flow = ControlFlow::Exit;
-                            } else {
-                                let now = Instant::now();
-                                let dt = (now - last_frame_time).as_secs_f32();
-                                last_frame_time = now;
+                    // Destructuramos la info
+                    if let KeyboardInput {
+                        virtual_keycode: Some(key),
+                        state,
+                        ..
+                    } = input
+                    {
+                        match state {
+                            ElementState::Pressed => {
+                                // Insertamos en el HashSet
+                                pressed_keys.insert(key);
 
-                                camera.process_keyboard(key, dt);
-
-                                // Cambios de escala global
+                                // Pulsos instantáneos (por ejemplo ESC, Q, E)
                                 match key {
+                                    VirtualKeyCode::Escape => {
+                                        *control_flow = ControlFlow::Exit;
+                                    }
+                                    // Cambios de escala global "instantáneos"
                                     VirtualKeyCode::Q => {
                                         scale_factor *= 1.1;
                                     }
@@ -103,6 +112,10 @@ fn main() {
                                     }
                                     _ => {}
                                 }
+                            }
+                            ElementState::Released => {
+                                // Quitamos la tecla del set
+                                pressed_keys.remove(&key);
                             }
                         }
                     }
@@ -123,11 +136,14 @@ fn main() {
                     obj.angle += obj.angular_speed * dt;
                 }
 
+                // *** Mover la cámara en base a las teclas presionadas ***
+                camera.process_keys(&pressed_keys, dt);
+
                 // Render
                 renderer.render_scene(&window, &mut objects, &camera, scale_factor);
             }
+            // Pide un redraw continuo
             Event::MainEventsCleared => {
-                // Forzar un redraw
                 window.request_redraw();
             }
             _ => {}
